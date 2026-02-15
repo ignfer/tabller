@@ -9,6 +9,7 @@ import './index.css';
 
 function App() {
   const [apiKey, setApiKey] = useState(null);
+  const [branchConfig, setBranchConfig] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [quotation, setQuotation] = useState(null);
@@ -16,23 +17,36 @@ function App() {
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('gemini_api_key');
-    if (savedApiKey) {
+    const savedBranchConfig = localStorage.getItem('branch_config');
+
+    if (savedApiKey && savedBranchConfig) {
       setApiKey(savedApiKey);
       try {
+        const config = JSON.parse(savedBranchConfig);
+        setBranchConfig(config);
         initializeGemini(savedApiKey);
       } catch (err) {
-        console.error('Error initializing Gemini:', err);
+        console.error('Error initializing:', err);
         localStorage.removeItem('gemini_api_key');
+        localStorage.removeItem('branch_config');
         setApiKey(null);
+        setBranchConfig({});
       }
     }
   }, []);
 
-  const handleApiKeySet = (key) => {
+  const handleConfigSet = (config) => {
     try {
-      initializeGemini(key);
-      localStorage.setItem('gemini_api_key', key);
-      setApiKey(key);
+      initializeGemini(config.apiKey);
+      localStorage.setItem('gemini_api_key', config.apiKey);
+      setApiKey(config.apiKey);
+      setBranchConfig({
+        branchName: config.branchName,
+        branchMail: config.branchMail,
+        branchPhone: config.branchPhone,
+        branchAddress: config.branchAddress,
+        branchColor: config.branchColor
+      });
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -60,7 +74,7 @@ function App() {
 
   const handleDownloadPDF = (quotationData) => {
     try {
-      downloadPDF(quotationData, logo);
+      downloadPDF(quotationData, logo, branchConfig);
     } catch (err) {
       setError('Error al generar el PDF: ' + err.message);
       console.error('PDF Error:', err);
@@ -76,27 +90,35 @@ function App() {
     setLogo(logoDataUrl);
   };
 
+  const handleReconfigure = () => {
+    if (confirm('¿Estás seguro de que quieres reconfigurar el taller y API key?')) {
+      localStorage.removeItem('gemini_api_key');
+      localStorage.removeItem('branch_config');
+      setApiKey(null);
+      setBranchConfig({});
+      setQuotation(null);
+    }
+  };
+
   if (!apiKey) {
-    return <ApiKeyConfig onApiKeySet={handleApiKeySet} />;
+    return <ApiKeyConfig onConfigSet={handleConfigSet} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <header className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Cotizador de Motos</h1>
-          <p className="text-gray-600">Sistema simple para crear cotizaciones profesionales</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {branchConfig.branchName || 'Cotizador de Motos'}
+          </h1>
+          <p className="text-gray-600">
+            Sistema simple para crear presupuestos profesionales
+          </p>
           <button
-            onClick={() => {
-              if (confirm('¿Estás seguro de que quieres cambiar la API key?')) {
-                localStorage.removeItem('gemini_api_key');
-                setApiKey(null);
-                setQuotation(null);
-              }
-            }}
+            onClick={handleReconfigure}
             className="mt-2 text-sm text-blue-600 hover:underline"
           >
-            Cambiar API Key
+            Reconfigurar Taller
           </button>
         </header>
 
@@ -120,7 +142,7 @@ function App() {
         )}
 
         <footer className="mt-12 text-center text-sm text-gray-500">
-          <p>Cotizador Simple v1.0</p>
+          <p>Cotizador Simple v2.0</p>
         </footer>
       </div>
     </div>

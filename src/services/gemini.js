@@ -11,7 +11,7 @@ export const initializeGemini = (apiKey) => {
     throw new Error('Gemini API key is required');
   }
   genAI = new GoogleGenerativeAI(key);
-  model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 };
 
 export const parseQuotationText = async (text) => {
@@ -28,9 +28,19 @@ Analiza el siguiente texto y extrae:
 3. Lista de trabajos/servicios/repuestos con:
    - Descripción (corregida gramaticalmente y bien escrita)
    - Cantidad (por defecto 1 si no se especifica)
-   - Precio unitario en UYU (si está mencionado, si no dejar en 0)
+   - Precio unitario (si está mencionado, si no dejar en 0)
+   - Moneda (UYU por defecto, pero puede ser USD, EUR, ARS, BRL, etc.)
 
-Importante:
+Importante sobre monedas:
+- Si NO se especifica moneda, usar "UYU"
+- Si dice "dólares", "USD", "US$", usar "USD"
+- Si dice "euros", "EUR", usar "EUR"
+- Si dice "pesos argentinos", "ARS", usar "ARS"
+- Si dice "reales", "BRL", "R$", usar "BRL"
+- Detectar el símbolo o palabra que indica moneda
+- Mantener consistencia en la moneda si se especifica una vez
+
+Importante sobre corrección:
 - Corrige cualquier error ortográfico o gramatical
 - Mantén el significado original
 - Usa lenguaje profesional pero claro
@@ -48,7 +58,8 @@ Responde SOLO con un objeto JSON válido con esta estructura exacta:
     {
       "description": "descripción corregida",
       "quantity": 1,
-      "unitPrice": 0
+      "unitPrice": 0,
+      "currency": "UYU"
     }
   ]
 }
@@ -71,6 +82,12 @@ No incluyas explicaciones, solo el JSON.
     if (!parsed.items || !Array.isArray(parsed.items)) {
       throw new Error('Formato de respuesta inválido');
     }
+
+    // Asegurar que cada item tenga una moneda (default UYU)
+    parsed.items = parsed.items.map(item => ({
+      ...item,
+      currency: item.currency || 'UYU'
+    }));
 
     return parsed;
   } catch (error) {
